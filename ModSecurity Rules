@@ -1,0 +1,199 @@
+#################################################################
+# Custom ModSecurity Rules for DVWA Protection
+# Author: Paul Deborah Ginikachi
+# Date: January 16, 2026
+# Description: Custom WAF rules to protect against SQL injection
+#              and XSS attacks on DVWA
+#################################################################
+
+# Rule Engine Configuration
+SecRuleEngine On
+SecRequestBodyAccess On
+SecResponseBodyAccess Off
+
+# Logging Configuration
+SecAuditEngine RelevantOnly
+SecAuditLogRelevantStatus "^(?:5|4(?!04))"
+SecAuditLogParts ABIJDEFHZ
+SecAuditLogType Serial
+SecAuditLog /var/log/apache2/modsec_audit.log
+
+# Debug Logging (disable in production)
+SecDebugLog /var/log/apache2/modsec_debug.log
+SecDebugLogLevel 0
+
+#================================================================
+# SQL Injection Protection Rules
+#================================================================
+
+# Rule 1001: Basic SQL Injection Patterns
+SecRule ARGS "@rx (?i:(union|select|insert|update|delete|drop|create|alter|exec|execute)\s+)" \
+    "id:1001,\
+    phase:2,\
+    block,\
+    t:none,t:urlDecodeUni,t:lowercase,\
+    msg:'SQL Injection Attack Detected',\
+    logdata:'Matched Data: %{MATCHED_VAR} found within %{MATCHED_VAR_NAME}',\
+    severity:'CRITICAL',\
+    tag:'application-multi',\
+    tag:'language-sql',\
+    tag:'OWASP_CRS',\
+    setvar:'tx.sql_injection_score=+5',\
+    setvar:'tx.anomaly_score=+5'"
+
+# Rule 1002: SQL Comment Sequences
+SecRule ARGS "@rx (?i:(--|#|/\*|\*/|;))" \
+    "id:1002,\
+    phase:2,\
+    block,\
+    t:none,t:urlDecodeUni,\
+    msg:'SQL Comment Sequence Detected',\
+    logdata:'Matched Data: %{MATCHED_VAR}',\
+    severity:'CRITICAL',\
+    tag:'application-multi',\
+    tag:'language-sql',\
+    setvar:'tx.sql_injection_score=+3'"
+
+# Rule 1003: SQL Logic Operators
+SecRule ARGS "@rx (?i:(\s+or\s+1=1|\s+or\s+'1'='1'|\s+and\s+1=1))" \
+    "id:1003,\
+    phase:2,\
+    block,\
+    t:none,t:urlDecodeUni,t:lowercase,\
+    msg:'SQL Injection Logic Operator Detected',\
+    logdata:'Matched Data: %{MATCHED_VAR}',\
+    severity:'CRITICAL',\
+    tag:'application-multi',\
+    tag:'language-sql',\
+    setvar:'tx.sql_injection_score=+5'"
+
+# Rule 1004: UNION-based SQL Injection
+SecRule ARGS "@rx (?i:union.*select)" \
+    "id:1004,\
+    phase:2,\
+    block,\
+    t:none,t:urlDecodeUni,t:lowercase,\
+    msg:'UNION-based SQL Injection Detected',\
+    logdata:'Matched Data: %{MATCHED_VAR}',\
+    severity:'CRITICAL',\
+    setvar:'tx.sql_injection_score=+5'"
+
+#================================================================
+# XSS (Cross-Site Scripting) Protection Rules
+#================================================================
+
+# Rule 2001: Script Tags
+SecRule ARGS "@rx (?i:<script[^>]*>)" \
+    "id:2001,\
+    phase:2,\
+    block,\
+    t:none,t:htmlEntityDecode,t:urlDecodeUni,t:lowercase,\
+    msg:'XSS Attack Detected - Script Tag',\
+    logdata:'Matched Data: %{MATCHED_VAR} found within %{MATCHED_VAR_NAME}',\
+    severity:'CRITICAL',\
+    tag:'application-multi',\
+    tag:'language-javascript',\
+    setvar:'tx.xss_score=+5',\
+    setvar:'tx.anomaly_score=+5'"
+
+# Rule 2002: JavaScript Event Handlers
+SecRule ARGS "@rx (?i:(onload|onerror|onclick|onmouseover)=)" \
+    "id:2002,\
+    phase:2,\
+    block,\
+    t:none,t:htmlEntityDecode,t:urlDecodeUni,t:lowercase,\
+    msg:'XSS Attack Detected - Event Handler',\
+    logdata:'Matched Data: %{MATCHED_VAR}',\
+    severity:'CRITICAL',\
+    tag:'application-multi',\
+    tag:'language-javascript',\
+    setvar:'tx.xss_score=+5'"
+
+# Rule 2003: JavaScript Protocol
+SecRule ARGS "@rx (?i:javascript:)" \
+    "id:2003,\
+    phase:2,\
+    block,\
+    t:none,t:htmlEntityDecode,t:urlDecodeUni,t:lowercase,\
+    msg:'XSS Attack Detected - JavaScript Protocol',\
+    logdata:'Matched Data: %{MATCHED_VAR}',\
+    severity:'CRITICAL',\
+    setvar:'tx.xss_score=+4'"
+
+# Rule 2004: Iframe Tags
+SecRule ARGS "@rx (?i:<iframe)" \
+    "id:2004,\
+    phase:2,\
+    block,\
+    t:none,t:htmlEntityDecode,t:urlDecodeUni,t:lowercase,\
+    msg:'XSS Attack Detected - Iframe Tag',\
+    logdata:'Matched Data: %{MATCHED_VAR}',\
+    severity:'CRITICAL',\
+    setvar:'tx.xss_score=+5'"
+
+#================================================================
+# Additional Protection Rules
+#================================================================
+
+# Rule 3001: Directory Traversal
+SecRule ARGS "@pm ../ ..\\ " \
+    "id:3001,\
+    phase:2,\
+    block,\
+    t:none,t:urlDecodeUni,\
+    msg:'Directory Traversal Attack Detected',\
+    severity:'WARNING'"
+
+# Rule 4001: Rate Limiting (100 requests per minute from same IP)
+SecAction \
+    "id:4001,\
+    phase:1,\
+    nolog,\
+    pass,\
+    initcol:ip=%{REMOTE_ADDR},\
+    setvar:ip.requests=+1,\
+    expirevar:ip.requests=60"
+
+SecRule IP:REQUESTS "@gt 100" \
+    "id:4002,\
+    phase:1,\
+    deny,\
+    status:429,\
+    msg:'Rate limit exceeded',\
+    severity:'WARNING'"
+
+# Rule 5001: Block attacks based on anomaly score
+SecRule TX:ANOMALY_SCORE "@ge 5" \
+    "id:5001,\
+    phase:2,\
+    deny,\
+    status:403,\
+    msg:'Attack Detected - Anomaly Score Exceeded',\
+    logdata:'Total Anomaly Score: %{TX.ANOMALY_SCORE}'"
+
+#================================================================
+# Whitelisting Rules (Allow legitimate traffic)
+#================================================================
+
+# Rule 9001: Allow legitimate DVWA login
+SecRule REQUEST_URI "@streq /DVWA/login.php" \
+    "id:9001,\
+    phase:1,\
+    pass,\
+    nolog,\
+    ctl:ruleEngine=Off"
+
+# Rule 9002: Allow DVWA setup
+SecRule REQUEST_URI "@streq /DVWA/setup.php" \
+    "id:9002,\
+    phase:1,\
+    pass,\
+    nolog,\
+    ctl:ruleEngine=Off"
+
+#================================================================
+# End of Custom Rules
+#================================================================
+
+# Log successful rule application
+SecMarker END_CUSTOM_RULES
