@@ -66,48 +66,11 @@ This repository documents a comprehensive web application security assessment in
 - 🟠 **High:** 1 (Missing HTTPS)
 - 🟡 **Medium:** 0
 - 🟢 **Low:** 5 (Security headers)
-
----
-
-## 📁 Repository Structure
-
-```
-web-security-assignment3/
-├── README.md                          # This file - Project overview
-├── docs/
-│   ├── complete-report.md            # Full assignment report
-│   ├── security-checklist.md         # PrestaShop security checklist
-│   └── attack-simulation-report.md   # Detailed attack documentation
-├── screenshots/
-│   ├── dvwa/                         # DVWA attack evidence
-│   │   ├── 01-sql-injection-basic.png
-│   │   ├── 02-sql-injection-credentials.png
-│   │   ├── 03-xss-reflected.png
-│   │   ├── 04-xss-stored-payload.png
-│   │   └── 05-xss-cookie-theft.png
-│   ├── modsecurity/                  # WAF implementation evidence
-│   │   ├── 06-modsecurity-installation.png
-│   │   ├── 07-waf-rules-config.png
-│   │   ├── 08-sql-injection-blocked.png
-│   │   ├── 09-xss-blocked.png
-│   │   ├── 10-audit-logs.png
-│   │   └── 11-waf-testing-script.png
-│   └── prestashop/                   # PrestaShop security evidence
-│       ├── 12-system-information.png
-│       ├── 13-module-manager.png
-│       ├── 14-employees.png
-│       ├── 15-products-cleared.png
-│       ├── 16-customers-cleared.png
-│       ├── 17-orders-canceled.png
-│       ├── 18-security-settings.png
-│       └── 19-admin-directory-renamed.png
-└── scripts/
-    ├── backup.sh                     # PrestaShop backup automation
-    ├── waf_test.sh                   # ModSecurity testing script
-    ├── prestashop_scanner.py         # Custom vulnerability scanner
-    └── custom-dvwa-rules.conf        # ModSecurity WAF rules
-```
-
+  
+├── docs/               # Complete documentation
+├── screenshots/        # Visual evidence
+├── scripts/           # Security tools and configs
+└── README.md          # This file
 ---
 
 ## 🔒 Security Implementations
@@ -184,13 +147,13 @@ SecRule ARGS "@rx (?i:<script[^>]*>)" \
 - ✅ Successfully bypassed authentication using `1' OR '1'='1`
 - ✅ Extracted 5 user accounts using UNION-based injection
 - ✅ Retrieved MD5 password hashes for all users
-- 📝 [View Complete Report](docs/complete-report.md#part-1-dvwa-attack-simulation)
+  
 
 **XSS Attack Results:**
 - ✅ Reflected XSS: Executed `<script>alert('XSS')</script>`
 - ✅ Stored XSS: Injected cookie-stealing payload in guestbook
 - ✅ Captured session cookie: `PHPSESSID=20214f69ee8ff1989d98e9fdd68c5f8`
-- 📝 [View Screenshots](screenshots/dvwa/)
+  
 
 ### Part 2: ModSecurity WAF Configuration
 
@@ -199,7 +162,7 @@ SecRule ARGS "@rx (?i:<script[^>]*>)" \
 - ✅ Configured custom rules for SQL injection and XSS
 - ✅ Tested with automated script: 100% block rate
 - ✅ Verified legitimate traffic passes through
-- 📝 [View WAF Configuration](scripts/custom-dvwa-rules.conf)
+  
 
 ### Part 3: PrestaShop Security Assessment
 
@@ -224,31 +187,12 @@ SecRule ARGS "@rx (?i:<script[^>]*>)" \
 - ✅ Configured automated daily backups
 - ✅ Set proper file permissions (755/644)
 
-📝 [View Security Checklist](docs/security-checklist.md)
-
 ---
 
 ## 🚀 Quick Start
-
-### Clone Repository
-
-```bash
-git clone https://github.com/cyberginny/Web-Application-Security.git
-cd Web-Application-Security
 ```
 
 ### View Documentation
-
-```bash
-# Read complete report
-cat docs/complete-report.md
-
-# Check security checklist
-cat docs/security-checklist.md
-
-# View attack simulation details
-cat docs/attack-simulation-report.md
-```
 
 ### Run PrestaShop Scanner
 
@@ -280,36 +224,6 @@ ls -lh /opt/prestashop-backups/
 ## 📸 Evidence Gallery
 
 ### DVWA Exploitation
-
-| Attack | Screenshot | Result |
-|--------|------------|--------|
-| SQL Injection (Basic) | ![SQL Basic](screenshots/dvwa/01-sql-injection-basic.png) | All 5 users displayed |
-| SQL Injection (Advanced) | ![SQL Advanced](screenshots/dvwa/02-sql-injection-credentials.png) | Password hashes extracted |
-| XSS (Reflected) | ![XSS Reflected](screenshots/dvwa/03-xss-reflected.png) | Alert box displayed |
-| XSS (Stored) | ![XSS Stored](screenshots/dvwa/04-xss-stored-payload.png) | Payload stored in guestbook |
-| Session Hijacking | ![Cookie Theft](screenshots/dvwa/05-xss-cookie-theft.png) | PHPSESSID captured |
-
-### ModSecurity WAF
-
-| Test | Screenshot | Result |
-|------|------------|--------|
-| Installation | ![Install](screenshots/modsecurity/06-modsecurity-installation.png) | Engine mode: ENABLED |
-| WAF Rules | ![Rules](screenshots/modsecurity/07-waf-rules-config.png) | Custom rules loaded |
-| SQL Blocked | ![SQL Block](screenshots/modsecurity/08-sql-injection-blocked.png) | HTTP 403 Forbidden |
-| XSS Blocked | ![XSS Block](screenshots/modsecurity/09-xss-blocked.png) | HTTP 403 Forbidden |
-| Audit Logs | ![Logs](screenshots/modsecurity/10-audit-logs.png) | All attacks logged |
-
-### PrestaShop Security
-
-| Component | Screenshot | Status |
-|-----------|------------|--------|
-| System Info | ![System](screenshots/prestashop/12-system-information.png) | v9.0.2 |
-| Employees | ![Employees](screenshots/prestashop/14-employees.png) | 1 custom admin only |
-| Products | ![Products](screenshots/prestashop/15-products-cleared.png) | 0 products (cleared) |
-| Customers | ![Customers](screenshots/prestashop/16-customers-cleared.png) | 0 customers |
-| Orders | ![Orders](screenshots/prestashop/17-orders-canceled.png) | 5 canceled |
-| Security | ![Security](screenshots/prestashop/18-security-settings.png) | Score 3 policy |
-
 ---
 
 ## 📈 Risk Assessment Summary
