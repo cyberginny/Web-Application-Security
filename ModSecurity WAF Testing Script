@@ -1,0 +1,172 @@
+#!/bin/bash
+#################################################################
+# ModSecurity WAF Testing Script
+# Author: Paul Deborah Ginikachi
+# Date: January 16, 2026
+# Description: Automated testing of ModSecurity WAF rules
+#################################################################
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Configuration
+TARGET_URL="${1:-http://localhost:8080/DVWA/vulnerabilities/sqli/}"
+EXPECTED_BLOCK_CODE="403"
+
+#################################################################
+# Functions
+#################################################################
+
+print_header() {
+    echo -e "${BLUE}=========================================${NC}"
+    echo -e "${BLUE}ModSecurity WAF Testing Script${NC}"
+    echo -e "${BLUE}=========================================${NC}"
+    echo -e "Target: $TARGET_URL"
+    echo -e "Expected Block Code: HTTP $EXPECTED_BLOCK_CODE"
+    echo ""
+}
+
+test_sql_injection() {
+    echo -e "${YELLOW}[TEST 1] SQL Injection Attack...${NC}"
+    echo -e "Payload: 1' OR '1'='1"
+    
+    RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "${TARGET_URL}?id=1'+OR+'1'%3D'1&Submit=Submit")
+    
+    echo -e "HTTP Status: $RESPONSE"
+    
+    if [ "$RESPONSE" == "303" ] || [ "$RESPONSE" == "403" ]; then
+        echo -e "${GREEN}✓ SQL Injection BLOCKED${NC}"
+    else
+        echo -e "${RED}✗ SQL Injection NOT BLOCKED${NC}"
+    fi
+    echo ""
+}
+
+test_union_sql_injection() {
+    echo -e "${YELLOW}[TEST 2] UNION SQL Injection...${NC}"
+    echo -e "Payload: 1' UNION SELECT null,version()#"
+    
+    RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "${TARGET_URL}?id=1'+UNION+SELECT+null,version()%23&Submit=Submit")
+    
+    echo -e "HTTP Status: $RESPONSE"
+    
+    if [ "$RESPONSE" == "303" ] || [ "$RESPONSE" == "403" ]; then
+        echo -e "${GREEN}✓ UNION SQL Injection BLOCKED${NC}"
+    else
+        echo -e "${RED}✗ UNION SQL Injection NOT BLOCKED${NC}"
+    fi
+    echo ""
+}
+
+test_xss_script_tag() {
+    echo -e "${YELLOW}[TEST 3] XSS Attack with <script> tag...${NC}"
+    echo -e "Payload: <script>alert('XSS')</script>"
+    
+    XSS_URL="http://localhost:8080/DVWA/vulnerabilities/xss_r/"
+    RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "${XSS_URL}?name=%3Cscript%3Ealert%28%27XSS%27%29%3C%2Fscript%3E")
+    
+    echo -e "HTTP Status: $RESPONSE"
+    
+    if [ "$RESPONSE" == "303" ] || [ "$RESPONSE" == "403" ]; then
+        echo -e "${GREEN}✓ XSS Attack BLOCKED${NC}"
+    else
+        echo -e "${RED}✗ XSS Attack NOT BLOCKED${NC}"
+    fi
+    echo ""
+}
+
+test_xss_event_handler() {
+    echo -e "${YELLOW}[TEST 4] XSS Attack with event handler...${NC}"
+    echo -e "Payload: <img src=x onerror=alert('XSS')>"
+    
+    XSS_URL="http://localhost:8080/DVWA/vulnerabilities/xss_r/"
+    RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "${XSS_URL}?name=%3Cimg+src%3Dx+onerror%3Dalert%28%27XSS%27%29%3E")
+    
+    echo -e "HTTP Status: $RESPONSE"
+    
+    if [ "$RESPONSE" == "303" ] || [ "$RESPONSE" == "403" ]; then
+        echo -e "${GREEN}✓ XSS Event Handler BLOCKED${NC}"
+    else
+        echo -e "${RED}✗ XSS Event Handler NOT BLOCKED${NC}"
+    fi
+    echo ""
+}
+
+test_legitimate_request() {
+    echo -e "${YELLOW}[TEST 5] Legitimate Request...${NC}"
+    echo -e "Payload: Normal user input"
+    
+    RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "${TARGET_URL}?id=1&Submit=Submit")
+    
+    echo -e "HTTP Status: $RESPONSE"
+    
+    if [ "$RESPONSE" == "200" ]; then
+        echo -e "${GREEN}✓ Legitimate Request ALLOWED${NC}"
+    else
+        echo -e "${RED}✗ Legitimate Request BLOCKED (False Positive)${NC}"
+    fi
+    echo ""
+}
+
+check_modsecurity_status() {
+    echo -e "${YELLOW}Checking ModSecurity Status...${NC}"
+    
+    if sudo apachectl -M | grep -q security2; then
+        echo -e "${GREEN}✓ ModSecurity module is loaded${NC}"
+    else
+        echo -e "${RED}✗ ModSecurity module is NOT loaded${NC}"
+        exit 1
+    fi
+    
+    if grep -q "SecRuleEngine On" /etc/modsecurity/modsecurity.conf; then
+        echo -e "${GREEN}✓ ModSecurity engine is ENABLED${NC}"
+    else
+        echo -e "${RED}✗ ModSecurity engine is NOT enabled${NC}"
+        exit 1
+    fi
+    echo ""
+}
+
+generate_summary() {
+    echo -e "${BLUE}=========================================${NC}"
+    echo -e "${BLUE}Test Summary${NC}"
+    echo -e "${BLUE}=========================================${NC}"
+    echo -e "Total Tests: 5"
+    echo -e "${GREEN}Passed:${NC} Check results above"
+    echo -e "${RED}Failed:${NC} Check results above"
+    echo ""
+    echo -e "Check ModSecurity audit log for details:"
+    echo -e "  ${YELLOW}sudo tail -f /var/log/apache2/modsec_audit.log${NC}"
+    echo -e "${BLUE}=========================================${NC}"
+}
+
+#################################################################
+# Main Execution
+#################################################################
+
+main() {
+    print_header
+    check_modsecurity_status
+    test_sql_injection
+    test_union_sql_injection
+    test_xss_script_tag
+    test_xss_event_handler
+    test_legitimate_request
+    generate_summary
+}
+
+# Check if curl is installed
+if ! command -v curl &> /dev/null; then
+    echo -e "${RED}ERROR: curl is not installed${NC}"
+    exit 1
+fi
+
+# Run main function
+main
+
+# Exit
+exit 0
